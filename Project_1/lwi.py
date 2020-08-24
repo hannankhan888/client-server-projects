@@ -18,6 +18,7 @@ __email__ = "hannan.khan@mavs.uta.edu"
 import PyQt5
 from PyQt5.QtWidgets import QListWidgetItem, QLabel
 
+
 class ClientWidgetItem(QListWidgetItem):
     def __init__(self, text: str = "", associated_countdown_label: QLabel = None):
         super(ClientWidgetItem, self).__init__()

@@ -1,6 +1,3 @@
-"""HANNAN KHAN
-1001815455"""
-
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -200,6 +197,7 @@ class ServerApp(QMainWindow):
         self.status_box_widget.append(msg)
         # reference: https://stackoverflow.com/questions/7778726/autoscroll-pyqt-qtextwidget
         self.status_box_widget.moveCursor(QtGui.QTextCursor.End)
+        self.update()
 
     def manage_client(self, client_socket, address, client_name):
         """This function will take a client as an input, and will update the client list,
@@ -251,11 +249,11 @@ class ServerApp(QMainWindow):
                 time_to_sleep = 10 - int(random_num)
                 time.sleep(time_to_sleep)
                 # sets the previous clients status to connected.
-                self.client_status_widget.item(random_client_idx).setText("Connected")
                 # chooses a random client index.
                 random_client_idx = random.randrange(0, len(self.list_of_all_clients))
                 # updates that clients status to reflect counting down.
                 self.client_status_widget.item(random_client_idx).setText("Counting Down...")
+                self.update()
                 # chooses a random countdown value.
                 random_num = str(random.randrange(2, 9))
                 # here we get the client socket and name from the lists.
@@ -267,8 +265,11 @@ class ServerApp(QMainWindow):
                     self.update_status("Sent %s to client %s" % (random_num, client_name))
                     recv_msg = client_socket.recv(1024).decode("utf-8")
                     self.update_status(recv_msg)
-                except OSError:
+                    self.client_status_widget.item(random_client_idx).setText("Connected")
+                    self.update()
+                except Exception as e:
                     # here we will notice if a client has been deleted.
+                    self.update_status(e.__str__())
                     self.update_status(f"{client_name}'s connection was closed by client.")
                     self.list_of_all_clients.pop(random_client_idx)
                     # socket for that client will be closed.

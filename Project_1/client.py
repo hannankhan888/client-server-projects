@@ -1,6 +1,3 @@
-"""HANNAN KHAN
-1001815455"""
-
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
@@ -15,11 +12,16 @@ __version__ = "1.0"
 __maintainer__ = "Hannan Khan"
 __email__ = "hannan.khan@mavs.uta.edu"
 
-import sys, socket, threading, time
+import sys
+import socket
+import threading
+import time
+
 from PyQt5 import QtWidgets, QtGui
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QInputDialog, QMessageBox
+
 from lwi import ClientWidgetItem
 
 PORT_NUMBER = 55556
@@ -199,14 +201,15 @@ class ClientApp(QMainWindow):
                 thread_to_be_closed: threading.Thread = self.list_of_all_threads.pop(client_idx)
                 # thread is deleted with timeout.
                 thread_to_be_closed.join(0.3)
-                countdown_label_to_be_deleted = self.list_of_all_countdown_labels.pop(client_idx)
-                del countdown_label_to_be_deleted
-                self.client_list_widget.setCurrentItem(self.client_list_widget.item(0))
-                # self.update_selected_client_idx()
+                self.list_of_all_countdown_labels.remove(client_idx)
+                try:
+                    self.client_list_widget.setCurrentRow(0)
+                except:
+                    self.client_list_widget.setCurrentItem(None)
+                self.update_selected_client_idx()
                 self.show_selected_client_countdown()
             except ValueError:
                 pass
-            del client_to_be_deleted
 
     def create_socket_with_thread(self, client_name, client_widget_item, client_idx):
         """This function will create a socket, and a thread, attaching both to the
@@ -251,22 +254,31 @@ class ClientApp(QMainWindow):
             else:
                 # here we have a while loop that handles the countdown, and waits for it.
                 while True:
-                    countdown_time = int(sock.recv(1024).decode("utf-8"))
+                    try:
+                        countdown_time = int(sock.recv(1024).decode("utf-8"))
+                    except Exception as e:
+                        self.update_status(e.__str__())
+                    client_idx = self.get_client_idx(client_name)
                     countdown_copy = countdown_time
-                    self.update_status(f"{client_name} has recieved {countdown_time}.")
-                    print("list index is client idx %d" % client_idx)
-                    # we update the countdown label to match the value of countdown time.
-                    self.list_of_all_countdown_labels[client_idx].setText(str(countdown_time))
-                    # client_widget_item.associated_countdown_label.setText(str(countdown_time))
-                    while countdown_time >= 0:
-                        # first we check to see if it is 0 or not. If it is, we send finish message.
-                        if int(self.list_of_all_countdown_labels[client_idx].text()) == 0:
-                            sock.send(bytes(f"CLIENT: {client_name} finished", "utf-8"))
-                            break
-                        # sleep for 1 sec. This is like pseudo-pause for python thread.
-                        time.sleep(1)
-                        self.update_client_countdown_value(client_idx)
-                        countdown_time = countdown_time - 1
+                    self.update_status(f"{client_name} has received {countdown_time}.")
+                    if client_idx is not None:
+                        # we update the countdown label to match the value of countdown time.
+                        self.list_of_all_countdown_labels[client_idx].setText(str(countdown_time))
+                        # client_widget_item.associated_countdown_label.setText(str(countdown_time))
+                        while countdown_time >= 0:
+                            if self.get_client_idx(client_name) != client_idx:
+                                self.list_of_all_countdown_labels[client_idx].setText("0")
+                                client_idx = self.get_client_idx(client_name)
+                            # first we check to see if it is 0 or not. If it is, we send finish message.
+                            if int(self.list_of_all_countdown_labels[client_idx].text()) == 0:
+                                sock.send(bytes(f"CLIENT: {client_name} finished", "utf-8"))
+                                break
+                            # sleep for 1 sec. This is like pseudo-pause for python thread.
+                            time.sleep(1)
+                            self.update_client_countdown_value(client_idx)
+                            countdown_time = countdown_time - 1
+                    elif client_idx is None:
+                        break
 
     def add_client_socket_denied(self, sock: socket.socket, client_name: str, client_widget_item: ClientWidgetItem,
                                  client_idx):
@@ -281,7 +293,8 @@ class ClientApp(QMainWindow):
         self.list_of_all_sockets.remove(sock)
         # thread is a daemon, it will close with the application process, or when the target func has returned.
         self.list_of_all_threads.remove(threading.current_thread())
-        self.list_of_all_countdown_labels.pop(client_idx)
+        countdown_label = self.list_of_all_countdown_labels.pop(client_idx)
+        countdown_label.hide()
         sock.close()
 
     def get_client_idx(self, client_name: str) -> int:
@@ -301,7 +314,8 @@ class ClientApp(QMainWindow):
             item = self.client_list_widget.item(i)
             if item.isSelected():
                 self.selected_client_idx = i
-                break
+                return
+        self.selected_client_idx = -1
 
     def show_selected_client_countdown(self):
         """Displays the correct countdown label based on which client is selected in the
@@ -347,6 +361,7 @@ class ClientApp(QMainWindow):
         self.status_box.append(msg)
         # reference: https://stackoverflow.com/questions/7778726/autoscroll-pyqt-qtextwidget
         self.status_box.moveCursor(QtGui.QTextCursor.End)
+        self.update()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         # reference: https://www.qtcentre.org/threads/26554-how-to-catch-close-event-in-this-program-pyqt
