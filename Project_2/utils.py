@@ -1,6 +1,3 @@
-"""HANNAN KHAN
-1001815455"""
-
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
